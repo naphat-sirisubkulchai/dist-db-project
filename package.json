@@ -1,0 +1,37 @@
+{
+  "name": "elysia-blog-api",
+  "version": "1.0.0",
+  "description": "Medium-like blog platform built with Elysia and MongoDB",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build src/index.ts --outdir ./dist --target bun",
+    "test": "bun test",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "elysia",
+    "mongodb",
+    "blog",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@elysiajs/cors": "^1.1.1",
+    "@elysiajs/jwt": "^1.1.1",
+    "@elysiajs/swagger": "^1.1.5",
+    "elysia": "^1.1.23",
+    "mongoose": "^8.8.4",
+    "bcryptjs": "^2.4.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/bun": "^1.1.13",
+    "bun-types": "^1.1.34"
+  }
+}
