@@ -92,7 +92,6 @@ const PostSchema = new Schema<IPost>(
 PostSchema.index({ author: 1, createdAt: -1 });
 PostSchema.index({ tags: 1 });
 PostSchema.index({ published: 1, publishedAt: -1 });
-PostSchema.index({ slug: 1 }, { unique: true });
 PostSchema.index({ title: 'text', content: 'text', excerpt: 'text' });
 
 // Pre-save hook to calculate read time

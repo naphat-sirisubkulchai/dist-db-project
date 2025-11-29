@@ -147,3 +147,4 @@ echo ""
 echo -e "${YELLOW}💡 Access Swagger docs: $BASE_URL/swagger${NC}"
 echo -e "${YELLOW}💡 Access MongoDB Express: http://localhost:8081${NC}"
 echo ""
+

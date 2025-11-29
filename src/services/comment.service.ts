@@ -1,6 +1,9 @@
 import { commentRepository } from '../repositories/comment.repository';
 import { postRepository } from '../repositories/post.repository';
 import { validatePagination, createPaginationResponse } from '../utils/helpers';
+import { notificationService } from './notification.service';
+import { NotificationType } from '../models/Notification';
+import { wsManager } from '../utils/websocket';
 
 export class CommentService {
   async createComment(
@@ -15,9 +18,10 @@ export class CommentService {
       throw new Error('Post not found');
     }
 
+    let parentComment;
     // If it's a reply, verify parent comment exists
     if (parentCommentId) {
-      const parentComment = await commentRepository.findById(parentCommentId);
+      parentComment = await commentRepository.findById(parentCommentId);
       if (!parentComment) {
         throw new Error('Parent comment not found');
       }
@@ -32,6 +36,35 @@ export class CommentService {
 
     // Increment comments count on post
     await postRepository.incrementCommentsCount(postId);
+
+    // Create notifications
+    if (parentCommentId && parentComment) {
+      // It's a reply - notify the comment author
+      const notification = await notificationService.createNotification({
+        recipient: parentComment.author,
+        sender: authorId,
+        type: NotificationType.COMMENT_REPLY,
+        post: postId,
+        comment: comment._id,
+      });
+
+      if (notification) {
+        wsManager.sendToUser(parentComment.author.toString(), notification);
+      }
+    } else {
+      // It's a new comment - notify the post author
+      const notification = await notificationService.createNotification({
+        recipient: post.author,
+        sender: authorId,
+        type: NotificationType.COMMENT,
+        post: postId,
+        comment: comment._id,
+      });
+
+      if (notification) {
+        wsManager.sendToUser(post.author.toString(), notification);
+      }
+    }
 
     return comment;
   }
@@ -98,6 +131,22 @@ export class CommentService {
     } else {
       // Like
       updatedComment = await commentRepository.addLike(commentId, userId);
+
+      // Create notification for comment author
+      if (updatedComment) {
+        const notification = await notificationService.createNotification({
+          recipient: updatedComment.author,
+          sender: userId,
+          type: NotificationType.COMMENT_LIKE,
+          post: updatedComment.post,
+          comment: updatedComment._id,
+        });
+
+        // Send real-time notification if user is online
+        if (notification) {
+          wsManager.sendToUser(updatedComment.author.toString(), notification);
+        }
+      }
     }
 
     if (!updatedComment) {

@@ -2,6 +2,9 @@ import { IPost } from '../models/Post';
 import { postRepository } from '../repositories/post.repository';
 import { commentRepository } from '../repositories/comment.repository';
 import { generateSlug, validatePagination, createPaginationResponse } from '../utils/helpers';
+import { notificationService } from './notification.service';
+import { NotificationType } from '../models/Notification';
+import { wsManager } from '../utils/websocket';
 
 export class PostService {
   async createPost(
@@ -16,7 +19,7 @@ export class PostService {
       author: authorId,
       excerpt: data.content.substring(0, 300),
       publishedAt: data.published ? new Date() : undefined,
-    } as IPost);
+    } as any);
 
     return post;
   }
@@ -131,6 +134,21 @@ export class PostService {
     } else {
       // Like
       updatedPost = await postRepository.addLike(postId, userId);
+
+      // Create notification for post author
+      if (updatedPost) {
+        const notification = await notificationService.createNotification({
+          recipient: updatedPost.author,
+          sender: userId,
+          type: NotificationType.POST_LIKE,
+          post: updatedPost._id,
+        });
+
+        // Send real-time notification if user is online
+        if (notification) {
+          wsManager.sendToUser(updatedPost.author.toString(), notification);
+        }
+      }
     }
 
     if (!updatedPost) {
@@ -140,7 +158,7 @@ export class PostService {
     return { liked: !alreadyLiked, likesCount: updatedPost.likesCount };
   }
 
-  async getFeed(userId: string, page?: string, limit?: string) {
+  async getFeed(_userId: string, page?: string, limit?: string) {
     const { page: pageNum, limit: limitNum, skip } = validatePagination(page, limit);
 
     // This would get posts from users the current user follows

@@ -67,48 +67,96 @@ For more details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 ### Prerequisites
 
 - [Bun](https://bun.sh/) >= 1.1.0
-- [Docker](https://www.docker.com/) & Docker Compose
-- Make (optional, for using Makefile commands)
+- MongoDB (installed automatically via `make install`)
+- Make (optional, recommended for easy setup)
+
+### Installation
+
+#### 🍎 macOS (Recommended - Automatic)
+
+```bash
+git clone <your-repo>
+cd dist-db-project
+make install
+```
+
+This automatically:
+- ✅ Installs MongoDB via Homebrew
+- ✅ Starts MongoDB service
+- ✅ Installs all dependencies
+
+#### 🪟 Windows
+
+**Option 1: PowerShell (Recommended)**
+```powershell
+# Run PowerShell as Administrator
+git clone <your-repo>
+cd dist-db-project
+.\install.ps1
+```
+
+**Option 2: Batch File**
+```cmd
+REM Run Command Prompt as Administrator
+git clone <your-repo>
+cd dist-db-project
+install.bat
+```
+
+**Option 3: Manual**
+```powershell
+# Install Chocolatey first (if not installed)
+choco install mongodb -y
+choco install bun -y
+
+# Then install dependencies
+bun install
+net start MongoDB
+```
+
+#### 🐧 Linux
+
+```bash
+git clone <your-repo>
+cd dist-db-project
+
+# Ubuntu/Debian
+sudo apt-get install mongodb -y
+sudo systemctl start mongod
+
+# Or use Docker
+make docker-up
+
+bun install
+```
 
 ### Quick Start
 
-1. **Clone and setup**
+1. **Configure environment** (if needed)
    ```bash
-   git clone <your-repo>
-   cd dist-db-project
-   bun install
    cp .env.example .env
+   # Edit .env if you want to change default settings
    ```
 
-2. **Configure environment**
-   Edit `.env` file with your settings:
-   ```env
-   NODE_ENV=development
-   PORT=3000
-   MONGODB_URI=mongodb://localhost:27017/blog
-   JWT_SECRET=your-super-secret-jwt-key-change-in-production
-   JWT_EXPIRES_IN=7d
-   DEFAULT_PAGE_SIZE=10
-   MAX_PAGE_SIZE=100
-   ```
-
-3. **Start MongoDB with Docker**
-   ```bash
-   make docker-up
-   # or: docker-compose up -d
-   ```
-
-4. **Start development server**
+2. **Start backend server**
    ```bash
    make dev
-   # or: bun run dev
+   # Backend runs on http://localhost:4000
    ```
 
-5. **Access the application**
-   - API: http://localhost:3000
-   - Swagger Docs: http://localhost:3000/swagger
-   - MongoDB Express: http://localhost:8081 (admin/admin123)
-   - Web Interface: Open `blog-app.html` in your browser
+3. **Start frontend** (in another terminal)
+   ```bash
+   cd frontend
+   npm install  # First time only
+   npm run dev
+   # Frontend runs on http://localhost:3000
+   ```
+
+4. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:4000
+   - Swagger Docs: http://localhost:4000/swagger
+   - MongoDB: mongodb://localhost:27017
 
 ## 📋 Makefile Commands
 
@@ -118,10 +166,28 @@ The project includes a comprehensive Makefile for easy development:
 
 ```bash
 make help           # Show all available commands
-make install        # Install dependencies
+make install        # Install dependencies AND MongoDB (auto-detects OS)
 make dev            # Start development server with hot reload
 make build          # Build the application
 make start          # Start production server
+```
+
+### MongoDB Commands (macOS)
+
+```bash
+make mongo-start    # Start MongoDB service
+make mongo-stop     # Stop MongoDB service
+make mongo-status   # Check MongoDB status
+make seed           # Seed database with sample data
+```
+
+### Windows MongoDB Commands
+
+```powershell
+net start MongoDB   # Start MongoDB
+net stop MongoDB    # Stop MongoDB
+Get-Service MongoDB # Check status
+bun run seed        # Seed database with sample data
 ```
 
 ### Docker Commands

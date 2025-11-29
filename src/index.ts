@@ -1,12 +1,15 @@
 import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { swagger } from '@elysiajs/swagger';
+import jwt from '@elysiajs/jwt';
 import { config } from './config/env';
 import { connectDatabase } from './config/database';
 import { authRoutes } from './routes/auth.routes';
 import { postRoutes } from './routes/post.routes';
 import { commentRoutes } from './routes/comment.routes';
 import { userRoutes } from './routes/user.routes';
+import { notificationController } from './controllers/notification.controller';
+import { wsManager } from './utils/websocket';
 
 // Connect to database
 await connectDatabase();
@@ -31,6 +34,7 @@ const app = new Elysia()
           { name: 'Posts', description: 'Blog post endpoints' },
           { name: 'Comments', description: 'Comment endpoints' },
           { name: 'Users', description: 'User endpoints' },
+          { name: 'Notifications', description: 'Notification endpoints' },
         ],
       },
     })
@@ -85,6 +89,56 @@ const app = new Elysia()
   .use(postRoutes)
   .use(commentRoutes)
   .use(userRoutes)
+  .use(notificationController)
+  .use(
+    jwt({
+      name: 'jwtWs',
+      secret: config.jwt.secret,
+    })
+  )
+  .ws('/ws', {
+    beforeHandle({ query, jwtWs }: any) {
+      const token = query.token;
+
+      if (!token) {
+        throw new Error('Unauthorized: No token provided');
+      }
+
+      try {
+        const payload = jwtWs.verify(token) as { userId: string };
+
+        if (!payload || !payload.userId) {
+          throw new Error('Unauthorized: Invalid token');
+        }
+
+        return { userId: payload.userId };
+      } catch (error) {
+        throw new Error('Unauthorized: Token verification failed');
+      }
+    },
+    open(ws: any) {
+      const userId = ws.data?.userId;
+
+      if (userId) {
+        wsManager.addConnection(userId, ws);
+        ws.send(
+          JSON.stringify({
+            type: 'connected',
+            message: 'Connected to notification stream',
+          })
+        );
+      }
+    },
+    message(_ws: any, _message: any) {
+      // Handle incoming messages if needed
+    },
+    close(ws: any) {
+      const userId = ws.data?.userId;
+      if (userId) {
+        wsManager.removeConnection(userId, ws);
+      }
+    },
+  })
   .listen(config.port);
 
 console.log(`🚀 Server is running at http://localhost:${app.server?.port}`);

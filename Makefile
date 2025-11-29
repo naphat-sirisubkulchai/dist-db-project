@@ -1,4 +1,4 @@
-.PHONY: help install dev build start stop restart logs clean test lint format docker-build docker-up docker-down docker-logs docker-clean
+.PHONY: help install dev mongo-start mongo-stop mongo-status seed build start stop restart logs clean test lint format docker-build docker-up docker-down docker-logs docker-clean
 
 # Default target
 .DEFAULT_GOAL := help
@@ -13,13 +13,68 @@ help: ## Show this help message
 	@echo "$(GREEN)Available commands:$(NC)"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
 
-install: ## Install dependencies
+install: ## Install dependencies and MongoDB
 	@echo "$(GREEN)Installing dependencies...$(NC)"
-	bun install
+	@echo "$(YELLOW)Detecting operating system...$(NC)"
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "$(GREEN)macOS detected - Installing MongoDB via Homebrew...$(NC)"; \
+		if ! command -v brew > /dev/null 2>&1; then \
+			echo "$(RED)Homebrew not found! Please install it first:$(NC)"; \
+			echo "  /bin/bash -c \"\$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""; \
+			exit 1; \
+		fi; \
+		if ! brew list mongodb-community@7.0 > /dev/null 2>&1; then \
+			echo "$(YELLOW)Installing MongoDB Community 7.0...$(NC)"; \
+			brew tap mongodb/brew 2>/dev/null || true; \
+			brew install mongodb-community@7.0; \
+			echo "$(GREEN)Starting MongoDB service...$(NC)"; \
+			brew services start mongodb/brew/mongodb-community@7.0; \
+		else \
+			echo "$(GREEN)MongoDB already installed!$(NC)"; \
+			brew services start mongodb/brew/mongodb-community@7.0 2>/dev/null || true; \
+		fi; \
+	elif [ "$$(uname)" = "Linux" ]; then \
+		echo "$(GREEN)Linux detected$(NC)"; \
+		echo "$(YELLOW)Please install MongoDB manually or use Docker:$(NC)"; \
+		echo "  sudo apt-get install mongodb (Ubuntu/Debian)"; \
+		echo "  sudo yum install mongodb (RedHat/CentOS)"; \
+		echo "  OR use: make docker-up"; \
+	elif echo "$$(uname)" | grep -qi "mingw\|msys\|cygwin"; then \
+		echo "$(GREEN)Windows detected$(NC)"; \
+		echo "$(YELLOW)Please install MongoDB using one of these methods:$(NC)"; \
+		echo "  1. Chocolatey: choco install mongodb"; \
+		echo "  2. Download installer: https://www.mongodb.com/try/download/community"; \
+		echo "  3. Use Docker: make docker-up"; \
+	else \
+		echo "$(YELLOW)Unknown OS - Please install MongoDB manually$(NC)"; \
+		echo "  Visit: https://www.mongodb.com/docs/manual/installation/"; \
+	fi
+	@echo "$(GREEN)Installing Node dependencies...$(NC)"
+	@bun install
+	@echo "$(GREEN)Installation complete!$(NC)"
+	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "  1. Update .env if needed"
+	@echo "  2. Run: make dev"
 
 dev: ## Run development server with hot reload
 	@echo "$(GREEN)Starting development server...$(NC)"
 	bun run dev
+
+mongo-start: ## Start MongoDB service
+	@echo "$(GREEN)Starting MongoDB...$(NC)"
+	@brew services start mongodb/brew/mongodb-community@7.0
+
+mongo-stop: ## Stop MongoDB service
+	@echo "$(YELLOW)Stopping MongoDB...$(NC)"
+	@brew services stop mongodb/brew/mongodb-community@7.0
+
+mongo-status: ## Check MongoDB status
+	@brew services list | grep mongodb
+
+seed: ## Seed database with sample data
+	@echo "$(GREEN)Seeding database...$(NC)"
+	@bun run seed
+	@echo "$(GREEN)Database seeded successfully!$(NC)"
 
 build: ## Build the application
 	@echo "$(GREEN)Building application...$(NC)"

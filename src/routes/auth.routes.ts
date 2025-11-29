@@ -14,7 +14,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   )
   .post(
     '/register',
-    async ({ body, jwt }) => {
+    async ({ body, jwt }: any) => {
       return await authController.register(body, jwt);
     },
     {
@@ -28,7 +28,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   )
   .post(
     '/login',
-    async ({ body, jwt }) => {
+    async ({ body, jwt }: any) => {
       return await authController.login(body, jwt);
     },
     {
@@ -39,13 +39,13 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     }
   )
   .use(jwtPlugin)
-  .get('/me', async ({ jwt, headers }) => {
+  .get('/me', async ({ jwt, headers }: any) => {
     const user = await getUserFromToken(jwt, headers);
     return await authController.getMe(user.userId);
   })
   .put(
     '/profile',
-    async ({ jwt, headers, body }) => {
+    async ({ jwt, headers, body }: any) => {
       const user = await getUserFromToken(jwt, headers);
       return await authController.updateProfile(user.userId, body);
     },
@@ -59,7 +59,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
   )
   .put(
     '/password',
-    async ({ jwt, headers, body }) => {
+    async ({ jwt, headers, body }: any) => {
       const user = await getUserFromToken(jwt, headers);
       return await authController.changePassword(user.userId, body.oldPassword, body.newPassword);
     },

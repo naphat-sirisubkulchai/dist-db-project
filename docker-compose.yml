@@ -25,7 +25,6 @@ services:
       - MONGO_INITDB_DATABASE=blog
     volumes:
       - mongodb_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - blog-network
     restart: unless-stopped
