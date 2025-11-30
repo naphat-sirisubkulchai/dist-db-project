@@ -9,6 +9,14 @@ export class UserController {
     };
   }
 
+  async getUserById(userId: string, currentUserId?: string) {
+    const user = await userService.getUserById(userId, currentUserId);
+    return {
+      success: true,
+      data: user,
+    };
+  }
+
   async getUserProfile(username: string, currentUserId?: string) {
     const profile = await userService.getUserProfile(username, currentUserId);
     return {

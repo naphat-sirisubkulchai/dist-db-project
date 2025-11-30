@@ -1,9 +1,42 @@
 import { userRepository } from '../repositories/user.repository';
 import { postRepository } from '../repositories/post.repository';
 import { validatePagination, createPaginationResponse } from '../utils/helpers';
+import { notificationService } from './notification.service';
+import { NotificationType } from '../models/Notification';
+import { wsManager } from '../utils/websocket';
 import mongoose from 'mongoose';
 
 export class UserService {
+  async getUserById(userId: string, currentUserId?: string) {
+    const user = await userRepository.findById(userId);
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Get stats
+    const [postsCount, followersCount, followingCount] = await Promise.all([
+      postRepository.countByAuthor(user._id as mongoose.Types.ObjectId, true),
+      userRepository.countFollowers(user._id as mongoose.Types.ObjectId),
+      userRepository.countFollowing(user._id as mongoose.Types.ObjectId),
+    ]);
+
+    let isFollowing = false;
+    if (currentUserId && currentUserId !== userId) {
+      isFollowing = await userRepository.isFollowing(currentUserId, userId);
+    }
+
+    return {
+      ...user.toObject(),
+      stats: {
+        posts: postsCount,
+        followers: followersCount,
+        following: followingCount,
+      },
+      isFollowing,
+    };
+  }
+
   async getUserByUsername(username: string) {
     const user = await userRepository.findByUsername(username);
 
@@ -67,6 +100,18 @@ export class UserService {
         userRepository.addFollowing(userId, targetUserId),
         userRepository.addFollower(targetUserId, userId),
       ]);
+
+      // Create notification for the followed user
+      const notification = await notificationService.createNotification({
+        recipient: targetUserId,
+        sender: userId,
+        type: NotificationType.FOLLOW,
+      });
+
+      // Send real-time notification
+      if (notification) {
+        wsManager.sendToUser(targetUserId, notification);
+      }
     }
 
     return { following: !alreadyFollowing };

@@ -104,12 +104,27 @@ export class CommentService {
     return { message: 'Comment deleted successfully' };
   }
 
-  async getPostComments(postId: string, page?: string, limit?: string) {
+  async getPostComments(postId: string, userId?: string, page?: string, limit?: string) {
     const { page: pageNum, limit: limitNum, skip } = validatePagination(page, limit);
 
-    const result = await commentRepository.findByPost(postId, skip, limitNum, true);
+    // Fetch all comments (including replies) by passing false for parentOnly
+    const result = await commentRepository.findByPost(postId, skip, limitNum, false);
 
-    return createPaginationResponse(result.comments, result.total, pageNum, limitNum);
+    console.log('User ID for comments:', userId);
+    console.log('First comment likes:', result.comments[0]?.likes);
+
+    // Add isLiked field to each comment if userId is provided
+    const commentsWithLikedStatus = result.comments.map((comment: any) => {
+      const isLiked = userId && comment.likes ?
+        comment.likes.some((id: any) => id.toString() === userId) : false;
+      console.log('Comment isLiked:', isLiked);
+      return {
+        ...comment,
+        isLiked,
+      };
+    });
+
+    return createPaginationResponse(commentsWithLikedStatus, result.total, pageNum, limitNum);
   }
 
   async getCommentReplies(commentId: string, page?: string, limit?: string) {

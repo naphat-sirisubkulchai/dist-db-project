@@ -9,6 +9,7 @@ export interface IUser extends Document {
   avatar?: string;
   followers: mongoose.Types.ObjectId[];
   following: mongoose.Types.ObjectId[];
+  savedPosts: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -59,6 +60,12 @@ const UserSchema = new Schema<IUser>(
       {
         type: Schema.Types.ObjectId,
         ref: 'User',
+      },
+    ],
+    savedPosts: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Post',
       },
     ],
   },

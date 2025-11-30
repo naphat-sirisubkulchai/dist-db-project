@@ -1,12 +1,14 @@
 import { Elysia, t } from 'elysia';
 import { notificationService } from '../services/notification.service';
-import { requireAuth } from '../middleware/auth';
+import { jwtPlugin } from '../middleware/auth';
+import { getUserFromToken } from '../utils/auth-helper';
 
 export const notificationController = new Elysia({ prefix: '/notifications' })
-  .use(requireAuth)
+  .use(jwtPlugin)
   .get(
     '/',
-    async ({ user, query }: any) => {
+    async ({ jwt, headers, query }: any) => {
+      const user = await getUserFromToken(jwt, headers);
       const limit = query.limit ? parseInt(query.limit as string) : 20;
       const skip = query.skip ? parseInt(query.skip as string) : 0;
 
@@ -35,7 +37,8 @@ export const notificationController = new Elysia({ prefix: '/notifications' })
   )
   .get(
     '/unread-count',
-    async ({ user }: any) => {
+    async ({ jwt, headers }: any) => {
+      const user = await getUserFromToken(jwt, headers);
       const count = await notificationService.getUnreadCount(user.userId);
 
       return {
@@ -82,7 +85,8 @@ export const notificationController = new Elysia({ prefix: '/notifications' })
   )
   .patch(
     '/read-all',
-    async ({ user }: any) => {
+    async ({ jwt, headers }: any) => {
+      const user = await getUserFromToken(jwt, headers);
       await notificationService.markAllAsRead(user.userId);
 
       return {

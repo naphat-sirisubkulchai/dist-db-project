@@ -23,8 +23,8 @@ export class PostController {
     };
   }
 
-  async getPostBySlug(slug: string) {
-    const post = await postService.getPostBySlug(slug);
+  async getPostBySlug(slug: string, userId?: string) {
+    const post = await postService.getPostBySlug(slug, userId);
     return {
       success: true,
       data: post,
@@ -50,6 +50,14 @@ export class PostController {
     };
   }
 
+  async getPostsByUser(userId: string, page?: string, limit?: string) {
+    const posts = await postService.getPostsByUser(userId, page, limit);
+    return {
+      success: true,
+      data: posts,
+    };
+  }
+
   async updatePost(postId: string, userId: string, updates: any) {
     const post = await postService.updatePost(postId, userId, updates);
     return {
@@ -71,6 +79,22 @@ export class PostController {
     return {
       success: true,
       data: result,
+    };
+  }
+
+  async savePost(postId: string, userId: string) {
+    const result = await postService.savePost(postId, userId);
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  async getSavedPosts(userId: string, page?: string, limit?: string) {
+    const posts = await postService.getSavedPosts(userId, page, limit);
+    return {
+      success: true,
+      data: posts,
     };
   }
 }

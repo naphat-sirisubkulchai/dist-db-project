@@ -5,6 +5,8 @@ export enum NotificationType {
   COMMENT = 'comment',
   COMMENT_REPLY = 'comment_reply',
   COMMENT_LIKE = 'comment_like',
+  FOLLOW = 'follow',
+  NEW_POST = 'new_post',
 }
 
 export interface INotification extends Document {

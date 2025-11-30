@@ -2,13 +2,15 @@ import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { swagger } from '@elysiajs/swagger';
 import jwt from '@elysiajs/jwt';
+import { staticPlugin } from '@elysiajs/static';
 import { config } from './config/env';
 import { connectDatabase } from './config/database';
 import { authRoutes } from './routes/auth.routes';
-import { postRoutes } from './routes/post.routes';
-import { commentRoutes } from './routes/comment.routes';
+import { postRoutes, postProtectedRoutes } from './routes/post.routes';
+import { commentRoutes, commentProtectedRoutes } from './routes/comment.routes';
 import { userRoutes } from './routes/user.routes';
 import { notificationController } from './controllers/notification.controller';
+import { uploadController } from './controllers/upload.controller';
 import { wsManager } from './utils/websocket';
 
 // Connect to database
@@ -85,10 +87,17 @@ const app = new Elysia()
     status: 'ok',
     timestamp: new Date().toISOString(),
   }))
+  .use(staticPlugin({
+    assets: 'uploads',
+    prefix: '/uploads',
+  }))
   .use(authRoutes)
   .use(postRoutes)
+  .use(postProtectedRoutes)
   .use(commentRoutes)
+  .use(commentProtectedRoutes)
   .use(userRoutes)
+  .use(uploadController)
   .use(notificationController)
   .use(
     jwt({
@@ -97,23 +106,21 @@ const app = new Elysia()
     })
   )
   .ws('/ws', {
-    beforeHandle({ query, jwtWs }: any) {
+    beforeHandle: async ({ query, jwtWs }: any) => {
       const token = query.token;
 
       if (!token) {
-        throw new Error('Unauthorized: No token provided');
+        return;
       }
 
       try {
-        const payload = jwtWs.verify(token) as { userId: string };
+        const payload = await jwtWs.verify(token);
 
-        if (!payload || !payload.userId) {
-          throw new Error('Unauthorized: Invalid token');
+        if (payload && payload.userId) {
+          return { userId: payload.userId };
         }
-
-        return { userId: payload.userId };
       } catch (error) {
-        throw new Error('Unauthorized: Token verification failed');
+        console.error('WebSocket auth error:', error);
       }
     },
     open(ws: any) {
@@ -127,6 +134,9 @@ const app = new Elysia()
             message: 'Connected to notification stream',
           })
         );
+      } else {
+        // Close connection if not authenticated
+        ws.close();
       }
     },
     message(_ws: any, _message: any) {

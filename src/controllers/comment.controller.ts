@@ -1,8 +1,8 @@
 import { commentService } from '../services/comment.service';
 
 export class CommentController {
-  async getPostComments(postId: string, page?: string, limit?: string) {
-    const comments = await commentService.getPostComments(postId, page, limit);
+  async getPostComments(postId: string, userId?: string, page?: string, limit?: string) {
+    const comments = await commentService.getPostComments(postId, userId, page, limit);
     return {
       success: true,
       data: comments,

@@ -113,6 +113,24 @@ export class UserRepository {
     const user = await User.findById(userId);
     return user?.following.some((id) => id.toString() === targetUserId) || false;
   }
+
+  async savePost(userId: string, postId: string): Promise<void> {
+    await User.findByIdAndUpdate(userId, { $addToSet: { savedPosts: postId } });
+  }
+
+  async unsavePost(userId: string, postId: string): Promise<void> {
+    await User.findByIdAndUpdate(userId, { $pull: { savedPosts: postId } });
+  }
+
+  async hasPostSaved(userId: string, postId: string): Promise<boolean> {
+    const user = await User.findById(userId);
+    return user?.savedPosts.some((id) => id.toString() === postId) || false;
+  }
+
+  async getSavedPosts(userId: string): Promise<mongoose.Types.ObjectId[]> {
+    const user = await User.findById(userId).select('savedPosts');
+    return user?.savedPosts || [];
+  }
 }
 
 export const userRepository = new UserRepository();

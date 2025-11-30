@@ -1,6 +1,7 @@
 import { IPost } from '../models/Post';
 import { postRepository } from '../repositories/post.repository';
 import { commentRepository } from '../repositories/comment.repository';
+import { userRepository } from '../repositories/user.repository';
 import { generateSlug, validatePagination, createPaginationResponse } from '../utils/helpers';
 import { notificationService } from './notification.service';
 import { NotificationType } from '../models/Notification';
@@ -20,6 +21,29 @@ export class PostService {
       excerpt: data.content.substring(0, 300),
       publishedAt: data.published ? new Date() : undefined,
     } as any);
+
+    // If the post is published, notify all followers
+    if (data.published) {
+      const author = await userRepository.findById(authorId);
+      if (author && author.followers && author.followers.length > 0) {
+        // Create notifications for all followers
+        const notificationPromises = author.followers.map(async (followerId) => {
+          const notification = await notificationService.createNotification({
+            recipient: followerId.toString(),
+            sender: authorId,
+            type: NotificationType.NEW_POST,
+            post: post._id,
+          });
+
+          // Send real-time notification
+          if (notification) {
+            wsManager.sendToUser(followerId.toString(), notification);
+          }
+        });
+
+        await Promise.all(notificationPromises);
+      }
+    }
 
     return post;
   }
@@ -81,14 +105,38 @@ export class PostService {
     return post;
   }
 
-  async getPostBySlug(slug: string) {
+  async getPostBySlug(slug: string, userId?: string) {
     const post = await postRepository.findBySlug(slug);
 
     if (!post) {
       throw new Error('Post not found');
     }
 
-    return post;
+    // Add isLiked field if userId is provided
+    const postObj = post.toObject ? post.toObject() : post;
+
+    console.log('Post likes:', (post as any).likes);
+    console.log('User ID:', userId);
+
+    const isLiked = userId && (post as any).likes ?
+      (post as any).likes.some((id: any) => id.toString() === userId) : false;
+
+    console.log('Is liked:', isLiked);
+
+    // Check if post is saved by the user
+    let isSaved = false;
+    if (userId) {
+      isSaved = await userRepository.hasPostSaved(userId, (post as any)._id.toString());
+      console.log('Is saved:', isSaved);
+    }
+
+    const postWithStatus = {
+      ...postObj,
+      isLiked,
+      isSaved,
+    };
+
+    return postWithStatus;
   }
 
   async getPosts(query: {
@@ -119,6 +167,14 @@ export class PostService {
     const { page: pageNum, limit: limitNum, skip } = validatePagination(page, limit);
 
     const result = await postRepository.findByAuthor(authorId, skip, limitNum, false);
+
+    return createPaginationResponse(result.posts, result.total, pageNum, limitNum);
+  }
+
+  async getPostsByUser(userId: string, page?: string, limit?: string) {
+    const { page: pageNum, limit: limitNum, skip } = validatePagination(page, limit);
+
+    const result = await postRepository.findByAuthor(userId, skip, limitNum, true);
 
     return createPaginationResponse(result.posts, result.total, pageNum, limitNum);
   }
@@ -166,6 +222,41 @@ export class PostService {
     const result = await postRepository.findPublished(skip, limitNum);
 
     return createPaginationResponse(result.posts, result.total, pageNum, limitNum);
+  }
+
+  async savePost(postId: string, userId: string) {
+    const alreadySaved = await userRepository.hasPostSaved(userId, postId);
+
+    if (alreadySaved) {
+      // Unsave
+      await userRepository.unsavePost(userId, postId);
+    } else {
+      // Save
+      await userRepository.savePost(userId, postId);
+    }
+
+    return { saved: !alreadySaved };
+  }
+
+  async getSavedPosts(userId: string, page?: string, limit?: string) {
+    const { page: pageNum, limit: limitNum, skip } = validatePagination(page, limit);
+
+    // Get the user's saved post IDs
+    const savedPostIds = await userRepository.getSavedPosts(userId);
+
+    if (savedPostIds.length === 0) {
+      return createPaginationResponse([], 0, pageNum, limitNum);
+    }
+
+    // Get the actual posts
+    const posts = await postRepository.findPublished(skip, limitNum);
+
+    // Filter to only saved posts
+    const savedPosts = posts.posts.filter((post: any) =>
+      savedPostIds.some((id) => id.toString() === post._id.toString())
+    );
+
+    return createPaginationResponse(savedPosts, savedPosts.length, pageNum, limitNum);
   }
 }
 
