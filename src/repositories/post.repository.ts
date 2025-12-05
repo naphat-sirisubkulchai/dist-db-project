@@ -84,7 +84,29 @@ export class PostRepository {
   }
 
   async search(query: string, skip: number, limit: number): Promise<{ posts: IPost[]; total: number }> {
-    return await this.findPublished(skip, limit, { $text: { $search: query } });
+    // Check if query looks like a slug (contains hyphens or is all lowercase)
+    const isSlugLike = query.includes('-') || query === query.toLowerCase();
+
+    let filter: any;
+
+    if (isSlugLike) {
+      // Use regex search for slug-like queries
+      filter = {
+        published: true,
+        $or: [
+          { slug: { $regex: query, $options: 'i' } },
+          { title: { $regex: query, $options: 'i' } }
+        ]
+      };
+    } else {
+      // Use text search for general queries (better for content search)
+      filter = {
+        published: true,
+        $text: { $search: query }
+      };
+    }
+
+    return await this.findAll(filter, skip, limit, { publishedAt: -1 });
   }
 
   async countByAuthor(authorId: mongoose.Types.ObjectId, publishedOnly: boolean = true): Promise<number> {

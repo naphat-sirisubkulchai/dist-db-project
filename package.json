@@ -9,6 +9,7 @@
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --outdir ./dist --target bun",
     "seed": "bun src/seed.ts",
+    "update-index": "bun src/scripts/update-text-index.ts",
     "test": "bun test",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
