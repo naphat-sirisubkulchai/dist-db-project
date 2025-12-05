@@ -12,6 +12,25 @@ export const postRoutes = new Elysia({ prefix: '/posts' })
   .get('/user/:userId', async ({ params: { userId }, query }) => {
     return await postController.getPostsByUser(userId, query.page, query.limit);
   })
+  .get('/id/:id', async ({ params: { id }, jwt, headers }: any) => {
+    // Manually extract user from JWT if present
+    let userId: string | undefined;
+    const auth = headers.authorization;
+
+    if (auth && auth.startsWith('Bearer ')) {
+      const token = auth.substring(7);
+      try {
+        const payload = await jwt.verify(token);
+        if (payload && payload.userId) {
+          userId = payload.userId;
+        }
+      } catch (error) {
+        // Token invalid, continue without user
+      }
+    }
+
+    return await postController.getPostById(id, userId);
+  })
   .get('/:slug', async ({ params: { slug }, jwt, headers }: any) => {
     // Manually extract user from JWT if present
     let userId: string | undefined;

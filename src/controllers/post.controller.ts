@@ -31,6 +31,14 @@ export class PostController {
     };
   }
 
+  async getPostById(id: string, userId?: string) {
+    const post = await postService.getPostById(id);
+    return {
+      success: true,
+      data: post,
+    };
+  }
+
   async createPost(
     userId: string,
     data: { title: string; content: string; tags?: string[]; coverImage?: string; published?: boolean }
